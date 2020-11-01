@@ -62,6 +62,7 @@ class Document(db.Model):
     __tablename__ = 'Document'
 
     id = Column(Integer, primary_key=True)
+    url = Column(UnicodeText(), unique=True)
     title = Column(UnicodeText())
     publish_date = Column(DateTime())
     text_raw = Column(UnicodeText(), nullable=False)
