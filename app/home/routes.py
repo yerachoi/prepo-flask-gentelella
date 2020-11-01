@@ -17,7 +17,7 @@ def index():
     return render_template(
         'index2.html', 
         doc_list=doc_list, doc_num=doc_num,
-        dash_url=Dash_App1.url_base
+        dash_url=Dash_App2.url_base
         )
 
 
