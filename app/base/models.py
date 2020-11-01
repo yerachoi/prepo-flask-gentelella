@@ -52,6 +52,7 @@ class Url(db.Model):
     url = Column(UnicodeText(), unique=True, nullable=False)
     plink_date = Column(DateTime(), nullable=False)
     saved_date = Column(DateTime())
+    scrap_result = Column(UnicodeText())
     user_id = Column(Integer, ForeignKey('User.id', ondelete='CASCADE'), nullable=False)
     user = relationship('User', backref=backref('url_set'))
 
@@ -66,6 +67,7 @@ class Document(db.Model):
     text_raw = Column(UnicodeText(), nullable=False)
     text_sum = Column(UnicodeText())
     text_prep = Column(UnicodeText(), nullable=False)
+    clip_date = Column(DateTime(), nullable=False)
     crawl_date = Column(DateTime(), nullable=False)
     is_news = Column(Boolean())
     url_id = Column(Integer, ForeignKey('Url.id'))
