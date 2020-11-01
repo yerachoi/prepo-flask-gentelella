@@ -31,8 +31,8 @@ jmespath==0.9.5
 joblib==0.14.1
 kiwisolver==1.1.0
 konlpy
-# llvmlite==0.31.0
-llvmlite
+llvmlite==0.31.0
+# llvmlite
 matplotlib==3.2.1
 # newspaper3k # added
 -e git+https://github.com/uoneway/newspaper.git#egg=newspaper3k
