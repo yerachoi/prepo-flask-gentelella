@@ -50,8 +50,8 @@ class Url(db.Model):
 
     id = Column(Integer, primary_key=True)
     url = Column(UnicodeText(), unique=True, nullable=False)
-    plink_date = Column(DateTime(), nullable=False)
-    saved_date = Column(DateTime())
+    clip_date = Column(DateTime(), nullable=False)
+    crawl_date = Column(DateTime(), nullable=False)
     scrap_result = Column(UnicodeText())
     user_id = Column(Integer, ForeignKey('User.id', ondelete='CASCADE'), nullable=False)
     user = relationship('User', backref=backref('url_set'))
