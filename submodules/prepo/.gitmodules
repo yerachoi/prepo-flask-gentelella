@@ -1,9 +1,0 @@
-[submodule "submodules/Top2Vec"]
-	path = submodules/Top2Vec
-	url = https://github.com/uoneway/Top2Vec.git
-[submodule "submodules/newspaper"]
-	path = submodules/newspaper
-	url = https://github.com/uoneway/newspaper.git
-[submodule "submodules/kakaotalk_msg_preprocessor"]
-	path = submodules/kakaotalk_msg_preprocessor
-	url = https://github.com/uoneway/kakaotalk_msg_preprocessor.git
