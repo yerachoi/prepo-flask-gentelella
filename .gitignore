@@ -26,3 +26,5 @@ _templates
 package-lock.json
 
 mecab*
+
+data/*.txt
