@@ -14,3 +14,5 @@ except KeyError:
 
 app = create_app(config_mode)
 Migrate(app, db)
+
+print('branch test')
