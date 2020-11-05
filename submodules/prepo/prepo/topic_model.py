@@ -1,6 +1,4 @@
-# from submodules.Top2Vec.top2vec import Top2Vec
-from top2vec import Top2Vec
-
+from submodules.Top2Vec.top2vec import Top2Vec
 
 class TopicModel(Top2Vec):
     """

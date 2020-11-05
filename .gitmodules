@@ -1,0 +1,3 @@
+[submodule "prepo"]
+	path = prepo
+	url = https://github.com/uoneway/prepo

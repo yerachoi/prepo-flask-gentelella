@@ -8,8 +8,10 @@ from app import db
 from app.base.forms import AddUrlForm
 from app.base.models import Document, Url, User
 
-from plink.src.scrap import scraper
-from plink.src.preprocess import preprocessing, summarizer
+import pandas as pd
+from submodules.prepo.prepo.scraper import scrap
+from submodules.prepo.prepo.preprocessor import preprocessing, summarize
+import kakaotalk_msg_preprocessor
 
 # @blueprint.route('/<template>')
 # @login_required
@@ -46,16 +48,30 @@ def add_url():
     print(request.form['url'])
     add_url_form = AddUrlForm(request.form)
     # if request.method == 'POST' and add_url_form.validate_on_submit():
+
+
     if request.method == 'POST':
         # print(add_url_form.data.get('content'))
 
-        # 다음 부분에 카톡대화파일에서 URL/시간 추출하거나
-        # 또는 입력에서 URL을 request.form['url']로 가져오고 datetime.now()을 넣어서 
+        ########## input_df만들기 ################
+        ### kakaotalk_export_file에서 url 추출
+        # file_path = None
+        # file_type = kakaotalk_msg_preprocessor.check_export_file_type(file_path)
+        # messages = kakaotalk_msg_preprocessor.parse(file_type, file_path)
+        # # URL만 추출. [{'datetime': datetime.datetime(2020, 8, 11, 12, 3), 'user_name': '김한길', 'url': 'https://www.youtube.com'}]
+        # url_messages = kakaotalk_msg_preprocessor.url_msg_extract(file_type, messages)
+        # input_df = pd.DataFrame.from_dict(url_messages)[['datetime', 'url']]
+        # input_df.rename(columns = {'datetime' : 'clip_at'}, inplace = True)
+
+        ### 또는 입력에서 URL을 request.form['url']로 가져오고 datetime.now()을 넣어서 
         # url, clip_at 칼럼을 가진 input_df을 만들어줘야함
-        # input_df = 
+        input_df = pd.DataFrame()
+
+        ############# 유저가 입력한 피하고 싶은 민감 url 종류. 다음의 값들을 가진 list가 ㄷㄹ어가야 함 : "cloud", "sns/community", 'shopping', "ott", "online_meeting"
+        sensitive_domain_cats=['ott', 'cloud']
 
         # scrap
-        docs_info, docs_idx, error_urls_by_types = scraper(input_df['url'], input_df.index)  # .tolist()
+        docs_info, docs_idx, error_urls_by_types = scrap(input_df['url'], input_df.index, sensitive_domain_cats=sensitive_domain_cats)  # .tolist()
         docs_info_df = pd.DataFrame.from_dict(docs_info)
         docs_info_df.index = docs_idx
 
@@ -66,7 +82,7 @@ def add_url():
         docs_info_prep_df = docs_info_df.copy()
         docs_info_prep_df['contents_prep'] = docs_info_prep_df['title'] + ". " + docs_info_prep_df['contents']
         docs_info_prep_df['contents_prep'] = docs_info_prep_df['contents_prep'].apply(preprocessing)
-        docs_info_prep_df['contents_prep_sum'] = docs_info_prep_df['contents_prep'].apply(summarizer)
+        docs_info_prep_df['contents_prep_sum'] = docs_info_prep_df['contents_prep'].apply(summarize)
 
         for index, row in docs_info_prep_df.iterrows():
             doc = Document(
