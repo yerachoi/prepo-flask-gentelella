@@ -8,7 +8,7 @@ from os import path
 # from Dashboard import Dash_App1, Dash_App2, Dash_App3, Dash_App4
 from Dashboard import user_totaldoc_app, user_weekdaydoc_app 
 from Dashboard import user_timeseries_app, user_clustermap_app
-from Dashboard import hotkeyword_app
+from Dashboard import hotkeyword_app, topicmap_app
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -93,5 +93,6 @@ def create_app(config, selenium=False):
     app = user_timeseries_app.Add_Dash(app)
     app = user_clustermap_app.Add_Dash(app)
     app = hotkeyword_app.Add_Dash(app)
+    app = topicmap_app.Add_Dash(app)
     
     return app

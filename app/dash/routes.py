@@ -4,7 +4,7 @@ from flask_login import login_required
 # from Dashboard import Dash_App1, Dash_App2, Dash_App3, Dash_App4
 from Dashboard import user_totaldoc_app, user_weekdaydoc_app 
 from Dashboard import user_timeseries_app, user_clustermap_app
-from Dashboard import hotkeyword_app
+from Dashboard import hotkeyword_app, topicmap_app
 
 
 @blueprint.route('/app1')
@@ -36,3 +36,9 @@ def app4_template():
 def app5_template():
     # return render_template('app5.html', dash_url = Dash_App5.url_base)
     return render_template('app5.html', dash_url = hotkeyword_app.url_base)
+
+@blueprint.route('/app6')
+@login_required
+def app6_template():
+    # return render_template('app6.html', dash_url = Dash_App6.url_base)
+    return render_template('app6.html', dash_url = topicmap_app.url_base)
