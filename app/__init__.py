@@ -83,6 +83,11 @@ def create_app(config, selenium=False):
     configure_logs(app)
     apply_themes(app)
 
+    # 필터
+    from .filter import format_datetime, format_content
+    app.jinja_env.filters['datetime'] = format_datetime
+    app.jinja_env.filters['content'] = format_content
+
     app = user_totaldoc_app.Add_Dash(app)
     app = user_weekdaydoc_app.Add_Dash(app)
     app = user_timeseries_app.Add_Dash(app)

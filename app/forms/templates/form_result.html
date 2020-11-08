@@ -70,16 +70,16 @@
                       {{doc.title}}
                     </td>
                     <td>
-                      <a href={{doc.url.url}}>링크</a>
+                      <a href={{doc.url.url}}><U>링크</U></a>
                     </td>
                     <td>
-                      {{doc.clip_date}}
+                      {{doc.clip_date|datetime}}
                     </td>
                     <td>
-                      {{doc.crawl_date}}
+                      {{doc.crawl_date|datetime}}
                     </td>
                     <td>
-                      {{doc.text_prep}}
+                      {{doc.text_prep|content}}
                     </td>
                   </tr>
                 </tbody>
