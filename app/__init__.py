@@ -5,7 +5,9 @@ from importlib import import_module
 from logging import basicConfig, DEBUG, getLogger, StreamHandler
 from os import path
 
-from Dashboard import Dash_App1, Dash_App2
+# from Dashboard import Dash_App1, Dash_App2, Dash_App3, Dash_App4
+from Dashboard import user_totaldoc_app, user_weekdaydoc_app 
+from Dashboard import user_timeseries_app, user_clustermap_app
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -17,7 +19,7 @@ def register_extensions(app):
 
 
 def register_blueprints(app):
-    for module_name in ('base', 'forms', 'ui', 'home', 'tables', 'data', 'additional', 'base'):
+    for module_name in ('base', 'forms', 'ui', 'home', 'tables', 'data', 'additional', 'docs'):
         module = import_module('app.{}.routes'.format(module_name))
         app.register_blueprint(module.blueprint)
 
@@ -79,6 +81,10 @@ def create_app(config, selenium=False):
     configure_database(app)
     configure_logs(app)
     apply_themes(app)
-    app = Dash_App1.Add_Dash(app)
-    app = Dash_App2.Add_Dash(app)    
+
+    app = user_totaldoc_app.Add_Dash(app)
+    app = user_weekdaydoc_app.Add_Dash(app)
+    app = user_timeseries_app.Add_Dash(app)
+    app = user_clustermap_app.Add_Dash(app)
+    
     return app
