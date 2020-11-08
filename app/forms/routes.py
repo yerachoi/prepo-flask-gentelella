@@ -18,6 +18,8 @@ from prepo.prepo.scraper import scrap
 from prepo.prepo.preprocessor import preprocessing, summarize
 from prepo.submodules.kakaotalk_msg_preprocessor import kakaotalk_msg_preprocessor
 
+from prepo.submodules.Top2Vec.top2vec import Top2Vec
+
 @blueprint.route('/<template>')
 @login_required
 def route_template(template, methods=('GET', 'POST')):
