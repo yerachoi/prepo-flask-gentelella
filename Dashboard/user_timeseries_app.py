@@ -29,12 +29,15 @@ date_lst = df.clip_at.unique()
 # app = dash.Dash(__name__) # external_stylesheets=external_stylesheets)
 
 layout = html.Div([
-  dcc.Graph(id='graph-with-slider'),
+  dcc.Graph(id='graph-with-slider',
+  style={'float': 'left','margin': 'auto'}),
   dcc.DatePickerRange(
       id = 'my-date-picker-range',
+      display_format = 'Y-M-D', 
       month_format='Y-M-D',
       end_date_placeholder_text='Y-M-D',
-      start_date=df['clip_at'].min()
+      start_date=df['clip_at'].min(),
+      style={'float': 'left','margin': 'auto'}
 )  
 
 ])

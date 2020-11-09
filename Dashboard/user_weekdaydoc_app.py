@@ -37,6 +37,7 @@ def select_OneWeek(data):
   last_week_df = data[week_prior <= data['clip_at']]
   return last_week_df
 
+
 # dataframe을 요일별화 시킴
 def weekday_df(data):
 
@@ -49,7 +50,13 @@ def weekday_df(data):
   week_df = data.groupby('day_of_week').count().reset_index() 
   week_df['day_of_week'] = pd.Categorical(week_df['day_of_week'],categories=weekday, ordered=True)  # Weekday 순서맞추기, not by alphabet order
   week_df = week_df.sort_values('day_of_week')
-
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Monday'],'월요일')
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Tuesday'],'화요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Wednesday'],'수요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Thursday'],'목요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Friday'],'금요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Saturday'],'토요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Sunday'],'일요일') 
   return week_df
 
 
