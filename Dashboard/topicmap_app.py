@@ -27,31 +27,44 @@ import json
 
 import sys
 import os
+from pathlib import Path
 import pandas as pd
 from itertools import cycle
 
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = PARENT_DIR + '/data'
+PREPO_DIR = PARENT_DIR + '/prepo'
+
 sys.path.insert(0, PARENT_DIR)
-sys.path.insert(0, PARENT_DIR + '/prepo')
+sys.path.insert(0, PREPO_DIR)
 from prepo.topic_model import TopicModel 
 from prepo import utils
 
 url_base = '/dash/app6/'
-
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 
 
-# network_df = pd.read_csv("outputs/network_df_sm.csv", index_col=0)  # ~4700 nodes
-#network_df = pd.read_csv("/mnt/d/yerachoi/plink-flask-gentelella/data/network_df_sm.csv", index_col=0)
+# docs 데이터 불러오기. #### 이 부분 db에서 불러오도록 수정필요 #####
+tm_model_path = DATA_DIR + '/tm_model.z'
+user_docs_df = utils.load_obj(DATA_DIR + '/', 'user_docs_df.pkl')  
+user_docs_df = user_docs_df.reset_index(level=0).rename(columns={"index":"id", 'contents_prep_sum': 'text_sum'})
+
+# 모델 불러오기 또는 로드하기
+BUILD_TM_MODEL = False
+if BUILD_TM_MODEL or not Path(tm_model_path).exists():
+    tm_model = TopicModel(user_docs_df['contents_prep_sum'], 
+                    doc_ids=user_docs_df['id'],
+                    )
+    tm_model.save(tm_model_path)
+    print("tm_model is saved")
+else:
+    tm_model = TopicModel.load(tm_model_path)
+    print("tm_model is loaded")
 
 
-
-user_docs_df = pd.read_csv("/home/lab13/prepo-flask-gentelella/data/user_docs_df2.csv")
-tm_model = TopicModel(user_docs_df['contents_prep'], 
-                   doc_ids=user_docs_df.index,
-                  )
-topics_idx_vector, docs_idx_vector, words_idx_vector = tm_model.get_2d_vectors()
+# docs 데이터 + top2vec모델 데이터 결합하여 사용할 df 만들기
+topics_idx_vector, docs_idx_vector, words_idx_vector = tm_model.get_2d_vectors()  # id, x, y 리턴
 
 topics_idx_vector_df = pd.DataFrame(topics_idx_vector)
 docs_idx_vector_df = pd.DataFrame(docs_idx_vector)
@@ -64,17 +77,23 @@ words_idx_vector_df['element_type'] = 'word'
 words_idx_vector_df['topic_idx'] = -1
 
 network_df = pd.concat([topics_idx_vector_df,docs_idx_vector_df, words_idx_vector_df])
-
-print(tm_model.get_num_topics())
+user_docs_df['element_type'] = 'doc'
+network_df = pd.merge(network_df, user_docs_df, on=['id','element_type'], how = 'left')
+#print(network_df.head())
+print(network_df.isnull().sum())
+print(network_df.columns)
+print(network_df['element_type'].value_counts())
+print(network_df.loc[network_df['element_type'] == 'doc', :][:2])
 print(network_df["topic_idx"].unique())
 
-############### network_df에서 'element_type'가 doc인것에 대해  ['title', 'publish_date', 'text_sum', 'url'] 추가해주세요#########
-from_doc_db_colname = ['title', 'publish_date', 'text_sum', 'url']
-for colname in from_doc_db_colname:
-    network_df[colname] = colname+'22'
 
-data_colnames = ['element_type', 'id, ''topic_idx', 'title', 'publish_date', 'text_sum', 'url']  #  'cited_by', 'n_cites', 
-vector_colnames = ['x','y'] # ,'v3','v4','v5'
+############### network_df에서 'element_type'가 doc인것에 대해  ['title', 'publish_date', 'text_sum', 'url'] 추가해주세요#########
+# from_doc_db_colname = ['title', 'publish_date', 'text_sum', 'url']
+# for colname in from_doc_db_colname:
+#     network_df[colname] = colname+'22'
+
+#doc_info_colnames = ['title', 'publish_date', 'contents', 'url', 'crawl_at', 'is_news', 'clip_at', 'contents_prep', 'text_sum', ]  #  'cited_by', 'n_cites', 
+vector_colnames = ['x','y'] # id, topic_idx, word
 position_arr = network_df.loc[:, vector_colnames].to_numpy()
 
 node_size_dict = {"topic": 50, 
@@ -82,7 +101,8 @@ node_size_dict = {"topic": 50,
                     "word": 10}
 
 # Prep data / fill NAs
-network_df["publish_date"] = network_df["publish_date"].fillna("")
+# for colname in doc_info_colnames:
+#     network_df[colname] = network_df[colname].fillna("")
 #network_df["cited_by"] = network_df["cited_by"].fillna("")   # edge하려면 이거 수정해줘야함
 network_df["topic_idx"] = network_df["topic_idx"].astype(str)
 # topic_idxs = [str(i) for i in range(len(network_df["topic_idx"].unique()))]
@@ -117,6 +137,7 @@ def get_node_list(in_df):  # Convert DF data to node list for cytoscape
                 #"n_cites": row["n_cites"],
                 "node_size": node_size_dict[row["element_type"]], #int(np.sqrt(1 + row["n_cites"]) * 10),
                 "url": row["url"],
+                "label": row['word']
             },
             "position": {"x": tsne_to_cyto(row["x"]), "y": tsne_to_cyto(row["y"])},
             "classes": row["topic_idx"],
@@ -169,26 +190,28 @@ for topic_idx in network_df["topic_idx"].unique():
 def_stylesheet += [
     {
         "selector": "node",
-        "style": {"width": "data(node_size)", "height": "data(node_size)"},
+        "style": {}
+        #"style": {"width": "data(node_size)", "height": "data(node_size)"},
     },
-    {"selector": "edge", "style": {"width": 1, "curve-style": "bezier"}},
+    #{"selector": "edge", "style": {"width": 1, "curve-style": "bezier"}},
 ]
 # type
 def_stylesheet += [
     {
-        "selector": '[element_type == "topic"]',
-        "style": {"width": 100, "height": 100,
-                    'shape': 'rectangle'},
+        "selector": '[element_type = "topic"]',
+        "style": {"width": 30, "height": 30,
+                    'shape': 'star'},
     },
     {
-        "selector": '[element_type == "doc"]',
-        "style": {"width": 50, "height": 50,
+        "selector": '[element_type = "doc"]',
+        "style": {"width": 10, "height": 10,
                     'shape': 'ellipse'},
     },
     {
-        "selector": '[element_type == "word"]',
-        "style": {"width": 20, "height": 20,
-                    'shape': 'star'},
+        "selector": '[element_type = "word"]',
+        "style": {"width": 1, "height": 1,
+                    #'shape': 'ellipse',
+                    'content': 'data(label)'},
     },
 ]
 
@@ -237,7 +260,7 @@ body_layout = dbc.Container(
                                 cyto.Cytoscape(
                                     id="core_19_cytoscape",
                                     layout={"name": "preset"},
-                                    style={"width": "100%", "height": "400px"},
+                                    style={"width": "100%", "height": "600px"},
                                     elements=startup_elm_list,
                                     stylesheet=def_stylesheet,
                                     minZoom=0.06,
@@ -383,16 +406,16 @@ def display_nodedata(datalist):
     data = datalist
     if data is not None:
         contents = []
-        contents.append(html.H5("Title: " + data["title"].title()))
+        contents.append(html.H5("제목: " + data["title"].title()))
         contents.append(
             html.P(
-                "Published: "
+                "출판일: "
                 + data["publish_date"]
             )
         )
         contents.append(
             html.P(
-                "Summary: "
+                "요약문: "
                 + str(data["text_sum"])
             )
         )
