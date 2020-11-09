@@ -20,7 +20,7 @@ import dash_html_components as html
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 from dash.dependencies import Input, Output
-#from .Dash_fun import apply_layout_with_auth, load_object, save_object
+from .Dash_fun import apply_layout_with_auth, load_object, save_object
 #from sklearn.manifold import TSNE
 #import umap  # pip install umap-learn
 import json
@@ -66,6 +66,7 @@ else:
 # docs 데이터 + top2vec모델 데이터 결합하여 사용할 df 만들기
 topics_idx_vector, docs_idx_vector, words_idx_vector = tm_model.get_2d_vectors()  # id, x, y 리턴
 
+element_types = ["topic", "doc", "word"]
 topic_df = pd.DataFrame(topics_idx_vector)
 topic_df['topic_idx'] = topic_df['id']
 docs_idx_vector_df = pd.DataFrame(docs_idx_vector)
@@ -106,7 +107,11 @@ vector_colnames = ['x','y'] # id, topic_idx, word
 # for colname in doc_info_colnames:
 #     network_df[colname] = network_df[colname].fillna("")
 #network_df["cited_by"] = network_df["cited_by"].fillna("")   # edge하려면 이거 수정해줘야함
-##network_df["topic_idx"] = network_df["topic_idx"].astype(str)
+topic_df["topic_idx"] = topic_df["topic_idx"].astype(str)
+doc_df["topic_idx"] = doc_df["topic_idx"].astype(str)
+word_df["topic_idx"] = word_df["topic_idx"].astype(str)
+doc_df["publish_date"] = doc_df["publish_date"].fillna("") 
+
 # topic_idxs = [str(i) for i in range(len(network_df["topic_idx"].unique()))]
 # lda_val_arr = network_df[topic_idxs].values
 
@@ -127,80 +132,90 @@ def tsne_to_cyto(tsne_val, scale_factor=40):
     return int(scale_factor * (float(tsne_val)))
 
 
-def get_node_list(topic_df, doc_df, word_df):  # Convert DF data to node list for cytoscape
+def get_node_list(df_dict):  # Convert DF data to node list for cytoscape
     node_list = []
     # topic
-    node_list += [{
-            "data": {
-                "id": row["id"], #str(idx),
-                "element_type": "topic",
-            },
-            "position": {"x": tsne_to_cyto(row["x"]), "y": tsne_to_cyto(row["y"])},
-            "classes": row["topic_idx"],
-            "selectable": True,
-            "grabbable": False,
-        } for idx, row in topic_df.iterrows()] 
+    if df_dict['topic'] is not None:
+        node_list += [{
+                "data": {
+                    "id": idx,
+                    "origin_id": row["id"], #
+                    "element_type": "topic",
+                    "node_size": 30,
+                },
+                "position": {"x": tsne_to_cyto(row["x"]), "y": tsne_to_cyto(row["y"])},
+                "classes": row["topic_idx"],
+                "selectable": True,
+                "grabbable": False,
+            } for idx, row in df_dict['topic'].iterrows()] 
 
     # doc
-    node_list += [{
-            "data": {
-                "id": row["id"],  # 원 db의 아이디. 물론 docs만 의미있...
-                "title": row["title"],
-                "element_type": "doc",
-                "publish_date": row["publish_date"],
-                "text_sum": row["text_sum"],
-                #"cited_by": row["cited_by"],
-                #"n_cites": row["n_cites"],
-                "node_size": node_size_dict[row["element_type"]], #int(np.sqrt(1 + row["n_cites"]) * 10),
-                "url": row["url"],
-            },
-            "position": {"x": tsne_to_cyto(row["x"]), "y": tsne_to_cyto(row["y"])},
-            "classes": row["topic_idx"],
-            "selectable": True,
-            "grabbable": False,
-        }
-        for idx, row in doc_df.iterrows()
-    ]
+    if df_dict['doc'] is not None:
+        node_list += [{
+                "data": {
+                    "id": idx + len(topic_df) ,
+                    "origin_id": row["id"], #  # 원 db의 아이디. 물론 docs만 의미있...
+                    "title": row["title"],
+                    "element_type": "doc",
+                    "publish_date": row["publish_date"],
+                    "text_sum": row["text_sum"],
+                    #"cited_by": row["cited_by"],
+                    #"n_cites": row["n_cites"],
+                    "node_size": 10, #int(np.sqrt(1 + row["n_cites"]) * 10),
+                    "url": row["url"],
+                },
+                "position": {"x": tsne_to_cyto(row["x"]), "y": tsne_to_cyto(row["y"])},
+                "classes": row["topic_idx"],
+                "selectable": True,
+                "grabbable": False,
+            }
+            for idx, row in df_dict['doc'].iterrows()
+        ]
     # word
-    node_list += [
-        {
-            "data": {
-                "id": row["id"],  # 원 db의 아이디. 물론 docs만 의미있...
-                "element_type": "word",
-                "label": row['word']
-            },
-            "position": {"x": tsne_to_cyto(row["x"]), "y": tsne_to_cyto(row["y"])},
-            "classes": row["topic_idx"],
-            "selectable": True,
-            "grabbable": False,
-        }
-        for idx, row in word_df.iterrows()
-    ]
+    if df_dict['word'] is not None:
+        node_list += [
+            {
+                "data": {
+                    "id": idx + len(topic_df) + len(doc_df),
+                    "origin_id": row["id"], #  # 원 db의 아이디. 물론 docs만 의미있...
+                    "element_type": "word",
+                    "node_size": 1,
+                    "label": row['word']
+                },
+                "position": {"x": tsne_to_cyto(row["x"]), "y": tsne_to_cyto(row["y"])},
+                "classes": row["topic_idx"],
+                "selectable": True,
+                "grabbable": False,
+            }
+            for idx, row in df_dict['word'].iterrows()
+        ]
 
     return node_list
 
 
 default_tsne = 40
 
-def update_node_data(dim_red_algo, tsne_perp, topic_df, doc_df, word_df, position_arr):
+def scale_node_loc(dim_red_algo, tsne_perp, df_dict):
     #(x_list, y_list) = get_node_locs(vectors_df, dim_red_algo, tsne_perp=tsne_perp)
-    x_list = position_arr[:, 0]
-    y_list = position_arr[:, 1]
 
+    # scale_factor 구하기
+    xy_df = pd.concat([topic_df[['x', 'y']], doc_df[['x', 'y']], word_df[['x', 'y']]])
+    x_list = xy_df['x']
+    y_list = xy_df['y']
     x_range = max(x_list) - min(x_list)
     y_range = max(y_list) - min(y_list)
     # print("Ranges: ", x_range, y_range)
 
-    scale_factor = int(4000 / (x_range + y_range))
-    in_df["x"] = x_list
-    in_df["y"] = y_list
+    scale_factor = int(300 / (x_range + y_range))
+    # in_df["x"] = x_list
+    # in_df["y"] = y_list
+    print(max(x_list), min(x_list), max(y_list), min(y_list), scale_factor)
 
-    tmp_node_list = get_node_list(topic_df, doc_df, word_df)
-    for i in range(
-        len(in_df)
-    ):  # Re-scaling to ensure proper canvas scaling vs node sizes 
-        tmp_node_list[i]["position"]["x"] = tsne_to_cyto(x_list[i], scale_factor)
-        tmp_node_list[i]["position"]["y"] = tsne_to_cyto(y_list[i], scale_factor)
+    # Re-scaling to ensure proper canvas scaling vs node sizes 
+    tmp_node_list = get_node_list(df_dict)
+    for idx in range(len(tmp_node_list)):
+        tmp_node_list[idx]["position"]["x"] = tsne_to_cyto(tmp_node_list[idx]["position"]["x"], scale_factor)
+        tmp_node_list[idx]["position"]["y"] = tsne_to_cyto(tmp_node_list[idx]["position"]["y"], scale_factor)
 
     return tmp_node_list
 
@@ -223,8 +238,7 @@ for topic_idx in topic_df["topic_idx"].unique():
 def_stylesheet += [
     {
         "selector": "node",
-        "style": {}
-        #"style": {"width": "data(node_size)", "height": "data(node_size)"},
+        "style": {"width": "data(node_size)", "height": "data(node_size)"},
     },
     #{"selector": "edge", "style": {"width": 1, "curve-style": "bezier"}},
 ]
@@ -232,18 +246,15 @@ def_stylesheet += [
 def_stylesheet += [
     {
         "selector": '[element_type = "topic"]',
-        "style": {"width": 30, "height": 30,
-                    'shape': 'star'},
+        "style": {'shape': 'star'},
     },
     {
         "selector": '[element_type = "doc"]',
-        "style": {"width": 10, "height": 10,
-                    'shape': 'ellipse'},
+        "style": {'shape': 'ellipse'},
     },
     {
         "selector": '[element_type = "word"]',
-        "style": {"width": 1, "height": 1,
-                    #'shape': 'ellipse',
+        "style": {#'shape': 'ellipse',
                     'content': 'data(label)'},
     },
 ]
@@ -260,87 +271,93 @@ for topic_html in [
 body_layout = dbc.Container(
     [
         dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        dcc.Markdown(
-                            """
-                -----
-                ##### Topics:
-                -----
-                """
-                        ),
-                        html.Div(
-                            topics_html,
-                            style={
-                                "fontSize": 11,
-                                "height": "100px",
-                                "overflow": "auto",
-                            },
-                        ),
-                    ],
-                    sm=12,
-                    md=8,
-                ),
-            ]
+             dbc.Col(
+                [dcc.Markdown(
+                    """
+                    -----
+                    #### 주제 / 문서 / 키워드 맵
+                    -----
+                    """
+                    ),
+                                    
+                ],
+
+            ),
         ),
-        dbc.Row(
-            [
-                dbc.Col(
-                    [
-                        dbc.Row(
-                            [
-                                cyto.Cytoscape(
-                                    id="core_19_cytoscape",
-                                    layout={"name": "preset"},
-                                    style={"width": "100%", "height": "600px"},
-                                    elements=startup_elm_list,
-                                    stylesheet=def_stylesheet,
-                                    minZoom=0.06,
-                                )
-                            ]
-                        ),
-                        dbc.Row(
-                            [
-                                dbc.Alert(
-                                    id="node-data",
-                                    children="Click on a node to see its details here",
-                                    color="secondary",
-                                )
-                            ]
-                        ),
-                    ],
-                    sm=12,
-                    md=8,
+        dbc.Row([
+            dbc.Col(
+                [html.Div(
+                        topics_html,
+                        style={
+                            "fontSize": 11,
+                            "height": "100px",
+                            "overflow": "auto",
+                        },
+                    ),
+                ],
+                sm=12,
+                md=8,
+            ),
+            dbc.Col([
+                dbc.Badge(
+                    "요소 종류:", color="info", className="mr-1"
                 ),
-                dbc.Col(
+                dbc.FormGroup(
                     [
-                        dbc.Badge(
-                            "element_type:", color="info", className="mr-1"
+                        dcc.Checklist(
+                            id="element_types_dropdown",
+                            options=[
+                                {
+                                    "label": k+ " ("+ str(v)+ ")",
+                                    "value": k,
+                                }
+                                for k, v in element_type_ser.items()
+                            ],
+                            value=startup_element_types,
+                            #multi=True,
+                            style={"width": "100%"},
                         ),
-                        dbc.FormGroup(
-                            [
-                                dcc.Checklist(
-                                    id="element_types_dropdown",
-                                    options=[
-                                        {
-                                            "label": k+ " ("+ str(v)+ ")",
-                                            "value": k,
-                                        }
-                                        for k, v in element_type_ser.items()
-                                    ],
-                                    value=startup_element_types,
-                                    #multi=True,
-                                    style={"width": "100%"},
-                                ),
-                            ]
-                        ),
-                    ],
-                    sm=12,
-                    md=4,
+                    ]
                 ),
-            ]
-        ),
+            ]),
+        ]),
+        dbc.Row([
+            dbc.Col(
+                [
+                    dbc.Row(
+                        [
+                            cyto.Cytoscape(
+                                id="core_19_cytoscape",
+                                layout={"name": "preset"},
+                                style={"width": "100%", "height": "600px"},
+                                elements=startup_elm_list,
+                                stylesheet=def_stylesheet,
+                                minZoom=0.16,
+                            )
+                        ]
+                    ),
+                    
+                ],
+                sm=12,
+                md=8,
+            ),
+            dbc.Col(
+                [
+                    
+                    dbc.Row(
+                        [
+                            dbc.Alert(
+                                id="node-data",
+                                children="Click on a node to see its details here",
+                                color="secondary",
+                            )
+                        ]
+                    ),
+                ],
+                sm=12,
+                md=4,
+            ),
+        ]),
         dbc.Row(
             [
                 dcc.Markdown(" "
@@ -363,107 +380,126 @@ body_layout = dbc.Container(
 app.layout = html.Div([body_layout])  # navbar, 
 
 
-# def Add_Dash(server):
-#     app = dash.Dash(server=server, 
-#                     url_base_pathname=url_base,
-#                     external_stylesheets=[dbc.themes.BOOTSTRAP])
-#     apply_layout_with_auth(app, layout)
+def Add_Dash(server):
+    app = dash.Dash(server=server, 
+                    url_base_pathname=url_base,
+                    external_stylesheets=[dbc.themes.BOOTSTRAP])
+    apply_layout_with_auth(app, layout)
 
-@app.callback(
-    Output("core_19_cytoscape", "elements"),
-    [
-        #Input("n_cites_dropdown", "value"),
-        Input("element_types_dropdown", "value"),
-        # Input("show_edges_radio", "checked"),
-        # Input("dim_red_algo", "value"),
-        # Input("tsne_perp", "value"),
-    ],
-)
-#def filter_nodes(usr_min_cites, usr_element_types_list, show_edges, dim_red_algo, tsne_perp):
-def filter_nodes(usr_element_types_list=None):
-    # print(usr_min_cites, usr_element_types_list, show_edges, dim_red_algo, tsne_perp)
-    # Use pre-calculated nodes/edges if default values are used
-    
-    ### TEMP######
-    usr_min_cites = 1
-    show_edges = False
-    dim_red_algo = "umap"
-    tsne_perp = 40
-    ### TEMP######
-
-
-    if (
-        usr_min_cites == startup_n_cites
-        and usr_element_types_list == startup_element_types
-        and show_edges == True
-        and dim_red_algo == "tsne"
-        and tsne_perp == 40
-    ):
-        logger.info("Using the default element list")
-        return startup_elm_list
-
-    else:
-        # Generate node list
-        #cur_df = network_df[(network_df.n_cites >= usr_min_cites)]
-        cur_df = network_df.copy()
-        if usr_element_types_list is not None and usr_element_types_list != []:
-            cur_df = cur_df[(cur_df['element_type'].isin(usr_element_types_list))]
-
-        position_arr = cur_df.loc[:, vector_colnames].to_numpy()
-
-        cur_node_list = update_node_data(dim_red_algo, tsne_perp, in_df=cur_df, position_arr=position_arr)
-
-        conn_list = []
-        # if show_edges:
-        #     conn_list = draw_edges(cur_df)
-
-        elm_list = cur_node_list + conn_list
-
-    return elm_list
+    @app.callback(
+        Output("core_19_cytoscape", "elements"),
+        [
+            #Input("n_cites_dropdown", "value"),
+            Input("element_types_dropdown", "value"),
+            # Input("show_edges_radio", "checked"),
+            # Input("dim_red_algo", "value"),
+            # Input("tsne_perp", "value"),
+        ],
+    )
+    #def filter_nodes(usr_min_cites, usr_element_types_list, show_edges, dim_red_algo, tsne_perp):
+    def filter_nodes(usr_element_types_list=None):
+        # print(usr_min_cites, usr_element_types_list, show_edges, dim_red_algo, tsne_perp)
+        # Use pre-calculated nodes/edges if default values are used
+        
+        ### TEMP######
+        usr_min_cites = 1
+        show_edges = False
+        dim_red_algo = "umap"
+        tsne_perp = 40
+        ### TEMP######
 
 
-@app.callback(
-    Output("node-data", "children"), [Input("core_19_cytoscape", "mouseoverNodeData")]  # selectedNodeData
-)
-def display_nodedata(datalist):
-    contents = "Click on a node to see its details here"
+        if (
+            usr_min_cites == startup_n_cites
+            and usr_element_types_list == startup_element_types
+            and show_edges == True
+            and dim_red_algo == "tsne"
+            and tsne_perp == 40
+        ):
+            logger.info("Using the default element list")
+            return startup_elm_list
 
-    # datalist = [datalist]
-    # if datalist is not None:
-    #     if len(datalist) > 0:
-    #         data = datalist[-1]
-    print("ssssssssssss")
-    data = datalist
-    if data is not None:
-        contents = []
-        contents.append(html.H5("제목: " + data["title"].title()))
-        contents.append(
-            html.P(
-                "출판일: "
-                + data["publish_date"]
-            )
-        )
-        contents.append(
-            html.P(
-                "요약문: "
-                + str(data["text_sum"])
-            )
-        )
-        contents.append(
-            html.A(
-                #id = 'link'+str(index),
-                # href=data["url"],
-                href='/docs/1',
-                children='문서 정보 확인하기', 
-                target="_blank",
-                
-            )                
-        )
+        else:
+            # Generate node list
+            #cur_df = network_df[(network_df.n_cites >= usr_min_cites)]
+            # cur_df = network_df.copy()
+            # if usr_element_types_list is not None and usr_element_types_list != []:
+            #     cur_df = cur_df[(cur_df['element_type'].isin(usr_element_types_list))]
 
-    return contents
-
-    #return app.server
+        # position_arr = cur_df.loc[:, vector_colnames].to_numpy()
+            dfs = [topic_df, doc_df, word_df]
+            user_select_dict = {}
+            for idx, element_type in enumerate(element_types):    
+                user_select_dict[element_type] = dfs[idx] if element_type in usr_element_types_list else None
 
 
-if __name__ == "__main__":
-    app.run_server(debug=False)
+            cur_node_list = scale_node_loc(dim_red_algo, tsne_perp, user_select_dict)
+
+            conn_list = []
+            # if show_edges:
+            #     conn_list = draw_edges(cur_df)
+
+            elm_list = cur_node_list + conn_list
+
+        return elm_list
+
+
+    @app.callback(
+        Output("node-data", "children"), [Input("core_19_cytoscape", "mouseoverNodeData")]  # selectedNodeData
+    )
+    def display_nodedata(datalist):
+        contents = "Click on a node to see its details here"
+
+        # datalist = [datalist]
+        # if datalist is not None:
+        #     if len(datalist) > 0:
+        #         data = datalist[-1]
+        print("ssssssssssss")
+        data = datalist
+        if data is not None:
+            if data['element_type'] == 'topic':
+                contents = []
+                topic_info = tm_model.get_topic_info(data["origin_id"])
+
+                contents.append(html.H5("주제 번호: " + str(data["origin_id"])))
+                contents.append(
+                    html.P(
+                        "키워드: "
+                        + ' '.join(topic_info["topic_words"])
+                    )
+                )
+            elif data['element_type'] == 'doc':
+                contents = []
+                contents.append(html.H5(data["title"].title()))
+                contents.append(
+                    html.P(
+                        "출판일: "
+                        + data["publish_date"]
+                    )
+                )
+                contents.append(
+                    html.P(
+                        "요약문: "
+                        + str(data["text_sum"])
+                    )
+                )
+                contents.append(
+                    html.A(
+                        #id = 'link'+str(index),
+                        # href=data["url"],
+                        href='/docs/' + str(data["origin_id"]),
+                        children='문서 정보 확인하기', 
+                        target="_blank",
+                        
+                    )                
+                )
+            elif data['element_type'] == 'word':
+                pass
+
+        return contents
+
+    return app.server
+
+
+# if __name__ == "__main__":
+#     app.run_server(debug=False)
