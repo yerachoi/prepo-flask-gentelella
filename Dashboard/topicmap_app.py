@@ -448,7 +448,7 @@ def Add_Dash(server):
         Output("node-data", "children"), [Input("core_19_cytoscape", "mouseoverNodeData")]  # selectedNodeData
     )
     def display_nodedata(datalist):
-        contents = "Click on a node to see its details here"
+        contents = "그래프 내 요소에 마우스를 올려보세요"
 
         # datalist = [datalist]
         # if datalist is not None:
