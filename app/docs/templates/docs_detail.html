@@ -79,16 +79,25 @@
 
               </table>
 
-              <div class="clearfix"></div>
+              <div class="clearfix" style="margin: 10px"></div>
               <h3>토픽 정보</h3>
+              <p>
+                토픽 번호: {{topic_id}}
+              </p>
+              <p>
+                <a href=/docs/topics/{{topic_id}}><U>토픽 상세 페이지</U></a>
+              </p>
               {% for topic in topic_info %}
                 <button type="button" class="btn btn-default" data-container="body" data-toggle="popover" data-placement="left" data-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus." data-original-title="" title="">
                   {{ topic }}
                 </button>
               {% endfor %}
 
-              <div class="clearfix"></div>
+              <div class="clearfix" style="margin: 10px"></div>
               <h3>토픽(축소) 정보</h3>
+              <p>
+                토픽(축소) 번호: {{topic_reduced_id}}
+              </p>
               {% for topic_reduced in topic_reduced_info %}
                 <button type="button" class="btn btn-default" data-container="body" data-toggle="popover" data-placement="left" data-content="Vivamus sagittis lacus vel augue laoreet rutrum faucibus." data-original-title="" title="">
                   {{ topic_reduced }}

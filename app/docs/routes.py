@@ -51,5 +51,44 @@ def doc_detail(doc_id):
 
     return render_template('docs_detail.html', 
                            doc=doc,
+                           topic_id=topic_id,
                            topic_info=topic_info,
+                           topic_reduced_id=topic_reduced_id,
                            topic_reduced_info=topic_reduced_info)
+
+
+@blueprint.route('/topics/<int:topic_id>/')
+@login_required
+def topic_detail(topic_id):
+    # user_id=current_user.get_id()
+    # doc_list = Document.query.join(Url).filter(Url.user_id==user_id).order_by(Document.clip_date.desc())
+    
+    # user_topics = doc_list.url.cluster
+    # user_topics_reduced = doc_list.url.cluster_reduced
+
+    tm_model_path = "/mnt/d/yerachoi/plink-flask-gentelella/data/tm_test.model"
+    tm_model = Top2Vec.load(tm_model_path)
+
+    topic_words = tm_model.get_topics_info()[topic_id]['topic_words']
+
+    num_docs = 5
+    # 토픽별 문서가 5개 미만일 경우를 고려
+    for attempt in range(num_docs + 1):
+        try:
+            topic_docs, topic_docs_scores, topic_docs_ids = tm_model.search_documents_by_topic(topic_num=topic_id, num_docs=num_docs)
+            topic_docs_list = list(zip(topic_docs, topic_docs_scores, topic_docs_ids))
+            break
+
+        except ValueError as e:
+            print(e)
+            if attempt == num_docs + 1:
+                topic_docs_list = list(zip([], [], []))
+                break
+            else:
+                num_docs -= 1
+                continue
+
+    return render_template('topics_detail.html',
+                           topic_id=topic_id,
+                           topic_words=topic_words,
+                           topic_docs_list=topic_docs_list)
