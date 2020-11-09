@@ -2,6 +2,7 @@ from bcrypt import gensalt, hashpw
 from flask_login import UserMixin
 from sqlalchemy import Binary, Boolean, Column, Integer, String
 from sqlalchemy import DateTime, ForeignKey, Text, UnicodeText
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import backref, relationship
 
 from app import db, login_manager
@@ -49,12 +50,17 @@ class Url(db.Model):
     __tablename__ = 'Url'
 
     id = Column(Integer, primary_key=True)
-    url = Column(UnicodeText(), unique=True, nullable=False)
+    url = Column(UnicodeText(), nullable=False)
     clip_date = Column(DateTime(), nullable=False)
     crawl_date = Column(DateTime(), nullable=False)
     scrap_result = Column(UnicodeText())
+    
     user_id = Column(Integer, ForeignKey('User.id', ondelete='CASCADE'), nullable=False)
     user = relationship('User', backref=backref('url_set'))
+
+    UniqueConstraint('user_id', 'url', name='user_url')
+    cluster = Column(Integer)
+    cluster_reduced = Column(Integer)
 
 
 class Document(db.Model):
@@ -73,5 +79,3 @@ class Document(db.Model):
     is_news = Column(Boolean())
     url_id = Column(Integer, ForeignKey('Url.id'))
     url = relationship('Url', backref=backref('doc_set'))
-    # user_id = Column(Integer, ForeignKey('User.id', ondelete='CASCADE'), nullable=False)
-    # user = relationship('User', backref=backref('url_set'))

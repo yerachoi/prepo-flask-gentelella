@@ -2,6 +2,10 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
+<<<<<<< HEAD
+=======
+from .Dash_fun import apply_layout_with_auth, load_object, save_object
+>>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
 import plotly.express as px
 import pandas as pd
 import datetime as dt
@@ -43,7 +47,11 @@ layout = html.Div([
 ])
 
 def Add_Dash(server):
+<<<<<<< HEAD
   app = Dash(server=server, url_base_pathname=url_base)
+=======
+  app = dash.Dash(server=server, url_base_pathname=url_base)
+>>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
   apply_layout_with_auth(app,layout)
 
   @app.callback(
@@ -57,10 +65,17 @@ def Add_Dash(server):
     date_df = df.groupby('clip_at').count().reset_index()
 
     filtered_df = date_df[(date_df['clip_at'] > start_date) & (date_df['clip_at'] <=end_date)]
+<<<<<<< HEAD
     fig = px.scatter(filtered_df, x='clip_at', y= 'title') # title기준으로 총 doc카운트
     fig.update_traces(mode = 'lines+markers')
     fig.update_xaxes(showgrid = False, title_text='Date')
     fig.update_yaxes(type='linear', title_text = 'Total numb of docs')
+=======
+    fig = px.scatter(filtered_df, x='clip_at', y='title') # title기준으로 총 doc카운트
+    fig.update_traces(mode = 'lines+markers')
+    fig.update_xaxes(showgrid = False, title_text='날짜')
+    fig.update_yaxes(type='linear', title_text = '전체 문서 개수')
+>>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
     
     return fig
   return app.server
