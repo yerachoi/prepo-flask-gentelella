@@ -142,6 +142,7 @@
                 </thead>
 
                 <tbody>
+                  {% for doc in similar_docs_list %}
                   <tr>
                     <td>
                       <a href=/docs/{{doc.id}}><U>{{doc.title}}</U></a>
@@ -159,6 +160,7 @@
                       {{doc.text_prep|content}}
                     </td>
                   </tr>
+                  {% endfor %}
                 </tbody>
 
               </table>
