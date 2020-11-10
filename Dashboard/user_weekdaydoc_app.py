@@ -2,10 +2,7 @@ import dash
 import dash_core_components as dcc
 from jupyter_dash import JupyterDash
 import dash_html_components as html
-<<<<<<< HEAD
-=======
 from .Dash_fun import apply_layout_with_auth, load_object, save_object
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
 from dash.dependencies import Input, State, Output
 import plotly.express as px
 import pandas as pd
@@ -41,19 +38,11 @@ def select_OneWeek(data):
   last_week_df = data[week_prior <= data['clip_at']]
   return last_week_df
 
-<<<<<<< HEAD
-
-=======
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
 # dataframe을 요일별화 시킴
 def weekday_df(data):
 
   # 요일 칼럼 생성
-  weekday = [ 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-<<<<<<< HEAD
-=======
-  # weekday = [ '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
+  weekday = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   data['day_of_week'] = data['clip_at'].apply(lambda x: x.weekday()) # get the weekday index, between 0 and 6
   data['day_of_week'] = data['day_of_week'].apply(lambda x: calendar.day_name[x]) # Monday, Tuesday...
 
@@ -61,7 +50,6 @@ def weekday_df(data):
   week_df = data.groupby('day_of_week').count().reset_index() 
   week_df['day_of_week'] = pd.Categorical(week_df['day_of_week'],categories=weekday, ordered=True)  # Weekday 순서맞추기, not by alphabet order
   week_df = week_df.sort_values('day_of_week')
-<<<<<<< HEAD
   week_df['day_of_week'] = week_df['day_of_week'].replace(['Monday'],'월요일')
   week_df['day_of_week'] = week_df['day_of_week'].replace(['Tuesday'],'화요일') 
   week_df['day_of_week'] = week_df['day_of_week'].replace(['Wednesday'],'수요일') 
@@ -69,23 +57,11 @@ def weekday_df(data):
   week_df['day_of_week'] = week_df['day_of_week'].replace(['Friday'],'금요일') 
   week_df['day_of_week'] = week_df['day_of_week'].replace(['Saturday'],'토요일') 
   week_df['day_of_week'] = week_df['day_of_week'].replace(['Sunday'],'일요일') 
-=======
-
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
   return week_df
 
 
 # 전체 요일별 총 doc 수 그래프
 fig_total = px.bar(weekday_df(df), x='day_of_week', y= 'title', barmode='group')
-<<<<<<< HEAD
-fig_total.update_xaxes( title_text='Week Day')
-fig_total.update_yaxes(title_text = 'Total numb of docs')
-
-# 최근 한 주 요일별 총 doc 수 그래프
-fig_oneweek = px.bar(weekday_df(select_OneWeek(df)), x='day_of_week', y= 'title', barmode='group')
-fig_oneweek.update_xaxes( title_text='Week Day')
-fig_oneweek.update_yaxes(title_text = 'Total numb of docs')
-=======
 fig_total.update_xaxes(title_text='요일')
 fig_total.update_yaxes(title_text='전체 문서 개수')
 
@@ -93,36 +69,23 @@ fig_total.update_yaxes(title_text='전체 문서 개수')
 fig_oneweek = px.bar(weekday_df(select_OneWeek(df)), x='day_of_week', y= 'title', barmode='group')
 fig_oneweek.update_xaxes( title_text='요일')
 fig_oneweek.update_yaxes(title_text='전체 문서 개수')
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
 
 layout = html.Div([
   html.Div([
       html.Div([
-<<<<<<< HEAD
-          html.H3('Total Numb of Doc per Weekday(Total)'),
-=======
           html.H3('전체 문서 개수'),
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
           dcc.Graph(id='g1', figure = fig_total)
       ], className="six columns"),
 
       html.Div([
-<<<<<<< HEAD
-          html.H3('Total Numb of Doc per Weekday(last one week)'),
-=======
           html.H3('최근 7일 간 문서 개수'),
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
           dcc.Graph(id='g2', figure= fig_oneweek)
       ], className="six columns"),
   ], className="row")
 ])
 
 def Add_Dash(server):
-<<<<<<< HEAD
-    app = Dash(server=server, url_base_pathname=url_base)
-=======
     app = dash.Dash(server=server, url_base_pathname=url_base)
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
     apply_layout_with_auth(app, layout)
 
     return app.server

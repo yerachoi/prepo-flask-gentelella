@@ -94,11 +94,7 @@ layout = html.Div([
     html.P(id='cytoscape-mouseoverNodeData-output')])
 
 def Add_Dash(server):
-<<<<<<< HEAD
-    app = Dash(server=server, url_base_pathname=url_base)
-=======
     app = dash.Dash(server=server, url_base_pathname=url_base)
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
     apply_layout_with_auth(app, layout)
 
     @app.callback(Output('cytoscape-mouseoverNodeData-output', 'children'),
@@ -106,11 +102,7 @@ def Add_Dash(server):
     
     def displayTapNodeData(data):
         if data:
-<<<<<<< HEAD
-            return "The title of documnet you hovered over is: " + data['label']
-=======
             return "마우스를 올린 문서 제목: " + data['label']
->>>>>>> fde1fa00c092367e283bc001679414ecf72a0091
 
 
     @app.callback(Output('cytoscape-tapNodeData-output', 'children'),
