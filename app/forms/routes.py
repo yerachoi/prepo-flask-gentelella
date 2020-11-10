@@ -12,6 +12,7 @@ from werkzeug.utils import secure_filename
 from app import db
 from app.base.forms import AddUrlForm
 from app.base.models import Document, Url, User
+from sqlalchemy.exc import IntegrityError
 
 import pandas as pd
 from prepo.prepo.scraper import scrap
@@ -20,39 +21,39 @@ from prepo.submodules.kakaotalk_msg_preprocessor import kakaotalk_msg_preprocess
 
 from prepo.submodules.Top2Vec.top2vec import Top2Vec
 
+
+def edit_db_item(table, item_id, **kwargs):
+
+    item = db.session.query(table).filter_by(id=item_id).one()
+
+    for attr, value in kwargs.items():
+        # 임시: 값이 없으면 수정
+        print(getattr(item, attr))
+        if not getattr(item, attr):
+            setattr(item, attr, value)
+
+    db.session.add(item)
+    db.session.commit()
+
+
 @blueprint.route('/<template>')
 @login_required
 def route_template(template, methods=('GET', 'POST')):
-    print('route_template')
-    # if template=='add_url': 
-    #     form = AddUrlForm()
-        # if request.method == 'POST' and form.validate_on_submit():
-        #     url = Url(url=form.content.data, plink_date=datetime.now())
-        #     db.session.add(url)
-        #     db.session.commit()
-        # return jsonify('success')
-    # else:
-    #     return render_template(template + '.html')
-    # form = AddUrlForm(request.form)
-    # if request.method == 'POST':
-        # url = Url(url=form.content.data, plink_date=datetime.now())
-        # db.session.add(url)
-        # db.session.commit()
-        # return redirect(url_for('forms_blueprint.index'))
-        # return jsonify('success')
     return render_template(template + '.html')
 
 def save_url(input_df, idx=None, sensitive_domain_cats=None):
     docs_info, docs_idx, error_urls_by_types = scrap(input_df['url'], idx, sensitive_domain_cats)  # .tolist()
-
-    print(error_urls_by_types)
     
     success_url_ids = []
     failure_url_ids = []
+    duplicate_url_ids = []
 
     # scrap 성공한 경우
     if docs_info:
         docs_info_df = pd.DataFrame.from_dict(docs_info)
+        tm_model_path = "/mnt/d/yerachoi/plink-flask-gentelella/data/tm_test.model"
+        tm_model = Top2Vec.load(tm_model_path)
+
         if docs_idx:
             docs_info_df.index = docs_idx
             
@@ -99,10 +100,28 @@ def save_url(input_df, idx=None, sensitive_domain_cats=None):
 
                 success_url_ids.append(url.id)
 
-            except Exception as e: # 수정 필요: 중복 url인 경우 무시
+                tm_model.add_documents(row['contents_prep_sum'],
+                                       doc_ids=[doc.id])
+                tm_model.save(tm_model_path)
+                cluster = tm_model.get_documents_topics([doc.id], reduced=False)
+                print(doc.id, cluster)
+                url = Url.query.join(Document).filter(Url.user_id==user_id, Document.id==doc.id).one()
+                url.cluster = cluster
+                db.session.commit()
+
+                # cluster_reduced = tm_model.get_documents_topics(self, doc.id, reduced=True)
+                # url.cluster_reduced = cluster_reduced
+                # db.session.commit()
+
+            except IntegrityError: # 중복 url인 경우: (sqlite3.IntegrityError) UNIQUE constraint failed
+                duplicate_url_info = (row['url'], row['clip_at'], row['crawl_at'], 'URL 중복')
+                duplicate_url_ids.append(duplicate_url_info)
+                db.session.rollback()
+
+            except Exception as e: # 나머지 경우
                 print(e)
                 continue
-
+        
     # scrap 실패한 경우
     if error_urls_by_types:
         for key in error_urls_by_types:  # 'parse_error', 'empty_contents'
@@ -123,7 +142,7 @@ def save_url(input_df, idx=None, sensitive_domain_cats=None):
                     print(e)
                     continue    
 
-    return success_url_ids, failure_url_ids
+    return success_url_ids, failure_url_ids, duplicate_url_ids
 
 
 @blueprint.route('/form', methods=['GET', 'POST'])
@@ -167,9 +186,12 @@ def add_url():
         sensitive_domain_cats=['ott', 'cloud']
 
         # scrap
-        success_url_ids, failure_url_ids = save_url(input_df, sensitive_domain_cats=sensitive_domain_cats)
+        success_url_ids, failure_url_ids, duplicate_url_ids = save_url(input_df, sensitive_domain_cats=sensitive_domain_cats)
         success_doc_list = [Document.query.filter_by(url_id=url_id).one() 
                             for url_id in success_url_ids]
+        success_url_list = [Url.query.filter_by(id=url_id).one()
+                            for url_id in success_url_ids]
+        success_info_list = list(zip(success_doc_list, success_url_list))
         failure_url_list = [Url.query.filter_by(id=url_id).one() 
                             for url_id in failure_url_ids]
 
@@ -178,8 +200,9 @@ def add_url():
             'form_result.html', 
             url_num=url_num,
             now_print=now_print,
-            success_doc_list=success_doc_list,
+            success_info_list=success_info_list,
             failure_url_list=failure_url_list,
+            duplicate_url_list=duplicate_url_ids,
             )
 
     else:
@@ -222,9 +245,12 @@ def add_url_kakao():
         sensitive_domain_cats=['ott', 'cloud']
 
         # scrap
-        success_url_ids, failure_url_ids = save_url(input_df, sensitive_domain_cats=sensitive_domain_cats)
+        success_url_ids, failure_url_ids, duplicate_url_ids = save_url(input_df, sensitive_domain_cats=sensitive_domain_cats)
         success_doc_list = [Document.query.filter_by(url_id=url_id).one() 
                             for url_id in success_url_ids]
+        success_url_list = [Url.query.filter_by(id=url_id).one()
+                            for url_id in success_url_ids]
+        success_info_list = list(zip(success_doc_list, success_url_list))
         failure_url_list = [Url.query.filter_by(id=url_id).one() 
                             for url_id in failure_url_ids]
 
@@ -233,8 +259,9 @@ def add_url_kakao():
             'form_result.html', 
             url_num=url_num,
             now_print=now_print,
-            success_doc_list=success_doc_list,
+            success_info_list=success_info_list,
             failure_url_list=failure_url_list,
+            duplicate_url_list=duplicate_url_ids,
             )
 
     else:
@@ -312,3 +339,19 @@ def add_url_kakao():
 #             success_doc_list=[],
 #             failure_url_list=[],
 #             )
+
+
+# 기존 데이터 정보 추가용 코드
+@blueprint.route('/add_url_csv', methods=['GET', 'POST'])
+@login_required
+def add_url_csv():
+    if request.method == 'POST':
+        docs_num = Document.query.count()
+        print(docs_num)
+        for i in range(1, docs_num+1):
+            item = Document.query.filter_by(id = i).one()
+            text_sum = summarize(item.text_prep)
+            update = {"text_sum": text_sum}
+            edit_db_item(Document, i, **update)
+        
+    return redirect(url_for('forms_blueprint.form'))

@@ -60,11 +60,12 @@
                     <th>클리핑한 날짜</th>
                     <th>크롤링한 날짜</th>
                     <th>요약</th>
+                    <th>토픽</th>
                   </tr>
                 </thead>
 
-                {% for doc in success_doc_list %}
                 <tbody>
+                  {% for doc, url in success_info_list %}
                   <tr>
                     <td>
                       {{doc.title}}
@@ -81,9 +82,13 @@
                     <td>
                       {{doc.text_prep|content}}
                     </td>
+                    <td>
+                      {{url.cluster}}
+                    </td>
                   </tr>
+                  {% endfor %}
                 </tbody>
-                {% endfor %}
+                
 
               </table>
 
@@ -100,8 +105,8 @@
                   </tr>
                 </thead>
                 
-                {% for url in failure_url_list %}
                 <tbody>
+                  {% for url in failure_url_list %}
                   <tr>
                     <td>
                       <a href={{url.url}}>링크</a>
@@ -116,8 +121,24 @@
                       {{url.scrap_result}}
                     </td>
                   </tr>
+                  {% endfor %}
+                  {% for url, clip_date, crawl_date, scrap_result in duplicate_url_list %}
+                  <tr>
+                    <td>
+                      <a href={{url}}>링크</a>
+                    </td>
+                    <td>
+                      {{clip_date}}
+                    </td>
+                    <td>
+                      {{crawl_date}}
+                    </td>
+                    <td>
+                      {{scrap_result}}
+                    </td>
+                  </tr>
+                  {% endfor %}
                 </tbody>
-                {% endfor %} 
 
               </table>
             </div>
