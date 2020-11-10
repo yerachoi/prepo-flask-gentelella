@@ -73,8 +73,11 @@ def doc_detail(doc_id):
 
     # similar
     similar_docs = tm_model.get_docs_by_doc([doc_id], num_docs=3)
-    similar_docs_list = [Document.query.filter_by(id=int(doc_id)).one()
-                         for doc_id in similar_docs]
+    if similar_docs:
+        similar_docs_list = [Document.query.filter_by(id=int(doc_id)).one()
+                            for doc_id in similar_docs]
+    else:
+        similar_docs_list = []
 
     return render_template('docs_detail.html', 
                            doc=doc,

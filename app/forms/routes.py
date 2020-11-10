@@ -224,8 +224,11 @@ def add_url():
         failure_url_list = [Url.query.filter_by(id=url_id).one() 
                             for url_id in failure_url_ids]
         print(similar_docs_ids)
-        similar_docs_list = [Document.query.filter_by(id=int(doc_id)).one()
-                             for doc_id in similar_docs_ids[0]]
+        if similar_docs_ids[0]:
+            similar_docs_list = [Document.query.filter_by(id=int(doc_id)).one()
+                                for doc_id in similar_docs_ids[0]]
+        else:
+            similar_docs_list = []
 
         # return redirect(url_for('forms_blueprint.form'))
         return render_template(
