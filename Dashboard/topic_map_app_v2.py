@@ -26,8 +26,11 @@ from prepo.topic_model import TopicModel
 from prepo import utils
 
 
+from .Dash_fun import apply_layout_with_auth, load_object, save_object
+from app import db
+from app.base.models import Document
 
-
+url_base = '/dash/app6/'
 
 # Load extra layouts
 cyto.load_extra_layouts()
@@ -394,137 +397,144 @@ app.layout = html.Div([
 
 
 # ############################## CALLBACKS ####################################
-@app.callback(Output('tap-node-json-output', 'children'),
-              [Input('cytoscape', 'tapNode')])
-def display_tap_node(data):
-    return json.dumps(data, indent=2)
+def Add_Dash(server):
+    app = dash.Dash(server=server, 
+                    url_base_pathname=url_base,
+                    external_stylesheets=[dbc.themes.BOOTSTRAP])
+    app.server.config
+    apply_layout_with_auth(app, layout)
+
+    @app.callback(Output('tap-node-json-output', 'children'),
+                [Input('cytoscape', 'tapNode')])
+    def display_tap_node(data):
+        return json.dumps(data, indent=2)
 
 
-@app.callback(Output('tap-edge-json-output', 'children'),
-              [Input('cytoscape', 'tapEdge')])
-def display_tap_edge(data):
-    return json.dumps(data, indent=2)
+    @app.callback(Output('tap-edge-json-output', 'children'),
+                [Input('cytoscape', 'tapEdge')])
+    def display_tap_edge(data):
+        return json.dumps(data, indent=2)
 
 
-@app.callback(Output('cytoscape', 'layout'),
-              [Input('dropdown-layout', 'value')])
-def update_cytoscape_layout(layout):
-    return {'name': layout}
+    @app.callback(Output('cytoscape', 'layout'),
+                [Input('dropdown-layout', 'value')])
+    def update_cytoscape_layout(layout):
+        return {'name': layout}
 
 
-@app.callback(Output('cytoscape', 'elements'),
-              [Input('cytoscape', 'tapNodeData')],
-              [State('cytoscape', 'elements'),])
-               #State('radio-expand', 'value')])
-def generate_elements(nodeData, elements):
-    if not nodeData:
-        return default_elements
+    @app.callback(Output('cytoscape', 'elements'),
+                [Input('cytoscape', 'tapNodeData')],
+                [State('cytoscape', 'elements'),])
+                #State('radio-expand', 'value')])
+    def generate_elements(nodeData, elements):
+        if not nodeData:
+            return default_elements
 
-    expansion_mode = 'followers'
-    print(nodeData)
+        expansion_mode = 'followers'
+        print(nodeData)
 
-    # If the node has already been expanded, we don't expand it again
-    if nodeData.get('expanded'):
-        return elements
+        # If the node has already been expanded, we don't expand it again
+        if nodeData.get('expanded'):
+            return elements
 
-    # This retrieves the currently selected element, and tag it as expanded
-    for element in elements:
-        if nodeData['id'] == element.get('data').get('id'):
-            element['data']['expanded'] = True
-            break
+        # This retrieves the currently selected element, and tag it as expanded
+        for element in elements:
+            if nodeData['id'] == element.get('data').get('id'):
+                element['data']['expanded'] = True
+                break
 
-    # if expansion_mode == 'followers':
+        # if expansion_mode == 'followers':
 
-    followers_nodes = followers_node_di.get(nodeData['id'])
-    followers_edges = followers_edges_di.get(nodeData['id'])
+        followers_nodes = followers_node_di.get(nodeData['id'])
+        followers_edges = followers_edges_di.get(nodeData['id'])
 
-    if followers_nodes:
-        for node in followers_nodes:
-            node['classes'] = 'followerNode'
-        elements.extend(followers_nodes)
+        if followers_nodes:
+            for node in followers_nodes:
+                node['classes'] = 'followerNode'
+            elements.extend(followers_nodes)
 
-    if followers_edges:
-        for follower_edge in followers_edges:
-            follower_edge['classes'] = 'followerEdge'
-        elements.extend(followers_edges)
+        if followers_edges:
+            for follower_edge in followers_edges:
+                follower_edge['classes'] = 'followerEdge'
+            elements.extend(followers_edges)
 
-    # elif expansion_mode == 'following':
+        # elif expansion_mode == 'following':
 
-    #     following_nodes = following_node_di.get(nodeData['id'])
-    #     following_edges = following_edges_di.get(nodeData['id'])
+        #     following_nodes = following_node_di.get(nodeData['id'])
+        #     following_edges = following_edges_di.get(nodeData['id'])
 
-    #     if following_nodes:
-    #         for node in following_nodes:
-    #             if node['data']['id'] != genesis_node['data']['id']:
-    #                 node['classes'] = 'followingNode'
-    #                 elements.append(node)
+        #     if following_nodes:
+        #         for node in following_nodes:
+        #             if node['data']['id'] != genesis_node['data']['id']:
+        #                 node['classes'] = 'followingNode'
+        #                 elements.append(node)
 
-    #     if following_edges:
-    #         for follower_edge in following_edges:
-    #             follower_edge['classes'] = 'followingEdge'
-    #         elements.extend(following_edges)
+        #     if following_edges:
+        #         for follower_edge in following_edges:
+        #             follower_edge['classes'] = 'followingEdge'
+        #         elements.extend(following_edges)
 
-    return insert_info_to_elements(elements)
-
-
+        return insert_info_to_elements(elements)
 
 
 
-@app.callback(
-    Output("node-data", "children"), [Input("cytoscape", "mouseoverNodeData")]  # selectedNodeData
-)
-def display_nodedata(datalist):
-    contents = "그래프 내 요소에 마우스를 올려보세요"
 
-    # datalist = [datalist]
-    # if datalist is not None:
-    #     if len(datalist) > 0:
-    #         data = datalist[-1]
-    data = datalist
-    if data is not None:
-        if data['element_type'] == 'topic':
-            contents = []
-            topic_info = tm_model.get_topic_info(data["origin_id"])
 
-            contents.append(html.H5("주제 번호: " + str(data["origin_id"])))
-            contents.append(
-                html.P(
-                    "키워드: "
-                    + ' '.join(topic_info["topic_words"])
+    @app.callback(
+        Output("node-data", "children"), [Input("cytoscape", "mouseoverNodeData")]  # selectedNodeData
+    )
+    def display_nodedata(datalist):
+        contents = "그래프 내 요소에 마우스를 올려보세요"
+
+        # datalist = [datalist]
+        # if datalist is not None:
+        #     if len(datalist) > 0:
+        #         data = datalist[-1]
+        data = datalist
+        if data is not None:
+            if data['element_type'] == 'topic':
+                contents = []
+                topic_info = tm_model.get_topic_info(data["origin_id"])
+
+                contents.append(html.H5("주제 번호: " + str(data["origin_id"])))
+                contents.append(
+                    html.P(
+                        "키워드: "
+                        + ' '.join(topic_info["topic_words"])
+                    )
                 )
-            )
-        elif data['element_type'] == 'doc':
-            contents = []
-            contents.append(html.A(
-                    #id = 'link'+str(index),
-                    # href=data["url"],
-                    href='/docs/' + str(data["origin_id"]),
-                    children=html.H5(data["title"].title()),
-                    target="_blank",
-                    
-                ))
-            contents.append(html.P("주제 번호: " + str(data["topic_idx"])),   )
-            contents.append(
-                html.P(
-                    "출판일: "
-                    + data["publish_date"]
+            elif data['element_type'] == 'doc':
+                contents = []
+                contents.append(html.A(
+                        #id = 'link'+str(index),
+                        # href=data["url"],
+                        href='/docs/' + str(data["origin_id"]),
+                        children=html.H5(data["title"].title()),
+                        target="_blank",
+                        
+                    ))
+                contents.append(html.P("주제 번호: " + str(data["topic_idx"])),   )
+                contents.append(
+                    html.P(
+                        "출판일: "
+                        + data["publish_date"]
+                    )
                 )
-            )
-            contents.append(
-                html.P(
-                    "요약문: "
-                    + str(data["text_sum"])
+                contents.append(
+                    html.P(
+                        "요약문: "
+                        + str(data["text_sum"])
+                    )
                 )
-            )
 
-        elif data['element_type'] == 'word':
-            pass
+            elif data['element_type'] == 'word':
+                pass
 
-    return contents
-
-
+        return contents
+    return app.server
 
 
 
-if __name__ == '__main__':
-    app.run_server(debug=True)
+
+# if __name__ == '__main__':
+#     app.run_server(debug=True)
