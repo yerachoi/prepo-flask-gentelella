@@ -94,10 +94,21 @@ def topic_detail(topic_id):
     # user_topics = doc_list.url.cluster
     # user_topics_reduced = doc_list.url.cluster_reduced
 
-    tm_model_path = "/mnt/d/yerachoi/plink-flask-gentelella/data/tm_test.model"
-    tm_model = Top2Vec.load(tm_model_path)
+    tm_model_path = '/mnt/d/yerachoi/plink-flask-gentelella/data/tm_model.z'
 
-    topic_words = tm_model.get_topics_info()[topic_id]['topic_words']
+    # 모델 생성하기 또는 로드하기
+    BUILD_TM_MODEL = False
+    if BUILD_TM_MODEL or not Path(tm_model_path).exists():
+        tm_model = TopicModel(user_docs_df['text_sum'], 
+                        doc_ids=user_docs_df['id'],
+                        )
+        tm_model.save(tm_model_path)
+        print("tm_model is saved")
+    else:
+        tm_model = TopicModel.load(tm_model_path)
+        print("tm_model is loaded")
+
+    topic_words = tm_model.get_topics_info(is_reduced=False)[topic_id]['topic_words']
 
     num_docs = 5
     # 토픽별 문서가 5개 미만일 경우를 고려
