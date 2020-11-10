@@ -224,7 +224,7 @@ def add_url():
         failure_url_list = [Url.query.filter_by(id=url_id).one() 
                             for url_id in failure_url_ids]
         print(similar_docs_ids)
-        if similar_docs_ids[0]:
+        if len(similar_docs_ids[0]) != 0:
             similar_docs_list = [Document.query.filter_by(id=int(doc_id)).one()
                                 for doc_id in similar_docs_ids[0]]
         else:
