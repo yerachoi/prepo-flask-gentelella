@@ -37,24 +37,28 @@ PREPO_DIR = PARENT_DIR + '/prepo'
 
 sys.path.insert(0, PARENT_DIR)
 sys.path.insert(0, PREPO_DIR)
-from prepo.topic_model import TopicModel 
-from prepo import utils
+from prepo.prepo.topic_model import TopicModel 
+from prepo.prepo import utils
+
+from app import db
+from app.base.models import Document
 
 url_base = '/dash/app6/'
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-server = app.server
 
 
 # docs 데이터 불러오기. #### 이 부분 db에서 불러오도록 수정필요 #####
 tm_model_path = DATA_DIR + '/tm_model.z'
-user_docs_df = utils.load_obj(DATA_DIR + '/', 'user_docs_df.pkl')  
-user_docs_df = user_docs_df.reset_index(level=0).rename(columns={"index":"id", 'contents_prep_sum': 'text_sum'})
+# user_docs_df = utils.load_obj(DATA_DIR + '/', 'user_docs_df.pkl')  
+# user_docs_df = user_docs_df.reset_index(level=0).rename(columns={"index":"id", 'contents_prep_sum': 'text_sum'})
+
+queryset = Document.query # SQLAlchemy가 만들어준 쿼리, 하지만 .all()이 없어 실행되지는 않음
+user_docs_df = pd.read_sql(queryset.statement, queryset.session.bind)
 
 # 모델 불러오기 또는 로드하기
 BUILD_TM_MODEL = False
 if BUILD_TM_MODEL or not Path(tm_model_path).exists():
-    tm_model = TopicModel(user_docs_df['contents_prep_sum'], 
-                    doc_ids=user_docs_df['id'],
+    tm_model = TopicModel(user_docs_df['text_sum'], 
+                          doc_ids=user_docs_df['id'],
                     )
     tm_model.save(tm_model_path)
     print("tm_model is saved")
@@ -116,11 +120,13 @@ doc_df["publish_date"] = doc_df["publish_date"].fillna("")
 # lda_val_arr = network_df[topic_idxs].values
 
 
-with open("/home/lab13/prepo-flask-gentelella/data/lda_topics.json", "r") as f:
-    lda_topics = json.load(f)
-topics_txt = [lda_topics[str(i)] for i in range(len(lda_topics))]
-topics_txt = [[j.split("*")[1].replace('"', "") for j in i] for i in topics_txt]
+# with open("/home/lab13/prepo-flask-gentelella/data/lda_topics.json", "r") as f:
+# with open("/mnt/d/yerachoi/plink-flask-gentelella/data/lda_topics.json", "r") as f:    
+#     lda_topics = json.load(f)
+# topics_txt = [lda_topics[str(i)] for i in range(len(lda_topics))]
+# topics_txt = [[j.split("*")[1].replace('"', "") for j in i] for i in topics_txt]
 
+topics_txt = tm_model.get_topics_info()['topics_words']
 topics_txt = ["; ".join(i) for i in topics_txt]
 print(topics_txt)
 #element_type_ser = network_df.groupby("element_type")["topic_idx"].count().sort_values(ascending=False)
@@ -377,13 +383,14 @@ body_layout = dbc.Container(
     style={"marginTop": 20},
 )
 
-app.layout = html.Div([body_layout])  # navbar, 
+layout = html.Div([body_layout])  # navbar, 
 
 
 def Add_Dash(server):
     app = dash.Dash(server=server, 
                     url_base_pathname=url_base,
                     external_stylesheets=[dbc.themes.BOOTSTRAP])
+    app.server.config
     apply_layout_with_auth(app, layout)
 
     @app.callback(

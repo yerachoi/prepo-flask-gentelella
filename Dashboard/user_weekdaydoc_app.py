@@ -42,8 +42,7 @@ def select_OneWeek(data):
 def weekday_df(data):
 
   # 요일 칼럼 생성
-  weekday = [ 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-  # weekday = [ '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
+  weekday = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   data['day_of_week'] = data['clip_at'].apply(lambda x: x.weekday()) # get the weekday index, between 0 and 6
   data['day_of_week'] = data['day_of_week'].apply(lambda x: calendar.day_name[x]) # Monday, Tuesday...
 
@@ -51,7 +50,13 @@ def weekday_df(data):
   week_df = data.groupby('day_of_week').count().reset_index() 
   week_df['day_of_week'] = pd.Categorical(week_df['day_of_week'],categories=weekday, ordered=True)  # Weekday 순서맞추기, not by alphabet order
   week_df = week_df.sort_values('day_of_week')
-
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Monday'],'월요일')
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Tuesday'],'화요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Wednesday'],'수요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Thursday'],'목요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Friday'],'금요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Saturday'],'토요일') 
+  week_df['day_of_week'] = week_df['day_of_week'].replace(['Sunday'],'일요일') 
   return week_df
 
 

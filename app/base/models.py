@@ -48,6 +48,7 @@ def request_loader(request):
 class Url(db.Model):
 
     __tablename__ = 'Url'
+    __table_args__ = (UniqueConstraint('user_id', 'url', name='user_url'),)
 
     id = Column(Integer, primary_key=True)
     url = Column(UnicodeText(), nullable=False)
@@ -58,7 +59,6 @@ class Url(db.Model):
     user_id = Column(Integer, ForeignKey('User.id', ondelete='CASCADE'), nullable=False)
     user = relationship('User', backref=backref('url_set'))
 
-    UniqueConstraint('user_id', 'url', name='user_url')
     cluster = Column(Integer)
     cluster_reduced = Column(Integer)
 
