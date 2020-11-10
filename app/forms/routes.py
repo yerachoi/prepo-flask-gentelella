@@ -1,6 +1,8 @@
 from datetime import datetime
 import os
 import re
+import sys
+from pathlib import Path
 
 import pandas as pd
 
@@ -17,10 +19,11 @@ from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from prepo.prepo.scraper import scrap
 from prepo.prepo.preprocessor import preprocessing, summarize
+from prepo.prepo.topic_model import TopicModel
+from prepo.prepo import utils
 from prepo.submodules.kakaotalk_msg_preprocessor import kakaotalk_msg_preprocessor
 
-from prepo.submodules.Top2Vec.top2vec import Top2Vec
-
+# from prepo.submodules.Top2Vec.top2vec import Top2Vec
 
 def edit_db_item(table, item_id, **kwargs):
 
@@ -47,12 +50,27 @@ def save_url(input_df, idx=None, sensitive_domain_cats=None):
     success_url_ids = []
     failure_url_ids = []
     duplicate_url_ids = []
+    similar_docs_ids = []
 
     # scrap 성공한 경우
     if docs_info:
         docs_info_df = pd.DataFrame.from_dict(docs_info)
-        tm_model_path = "/mnt/d/yerachoi/plink-flask-gentelella/data/tm_test.model"
-        tm_model = Top2Vec.load(tm_model_path)
+        # tm_model_path = "/mnt/d/yerachoi/plink-flask-gentelella/data/tm_test.model"
+        tm_model_path = '/mnt/d/yerachoi/plink-flask-gentelella/data/tm_model.z'
+
+        # 모델 생성하기 또는 로드하기
+        BUILD_TM_MODEL = False
+        if BUILD_TM_MODEL or not Path(tm_model_path).exists():
+            tm_model = TopicModel(user_docs_df['text_sum'], 
+                            doc_ids=user_docs_df['id'],
+                            )
+            tm_model.save(tm_model_path)
+            print("tm_model is saved")
+        else:
+            tm_model = TopicModel.load(tm_model_path)
+            print("tm_model is loaded")
+
+        # tm_model = Top2Vec.load(tm_model_path)
 
         if docs_idx:
             docs_info_df.index = docs_idx
@@ -94,20 +112,31 @@ def save_url(input_df, idx=None, sensitive_domain_cats=None):
                     is_news=row['is_news'],
                     
                     url_id=url.id
-                    )            
+                    )
+         
                 db.session.add(doc)
                 db.session.commit()
 
                 success_url_ids.append(url.id)
 
-                tm_model.add_documents(row['contents_prep_sum'],
+                print(doc.id)
+                print('tm_model_num')             
+                tm_model.add_documents([row['contents_prep_sum']],
                                        doc_ids=[doc.id])
                 tm_model.save(tm_model_path)
                 cluster = tm_model.get_documents_topics([doc.id], reduced=False)
                 print(doc.id, cluster)
-                url = Url.query.join(Document).filter(Url.user_id==user_id, Document.id==doc.id).one()
-                url.cluster = cluster
+                print(cluster[0][0])
+                
+                user_id = current_user.get_id()
+                url = Url.query.filter_by(id=url.id).one()
+                url.cluster = int(cluster[0][0])
+                db.session.add(url)
                 db.session.commit()
+
+                similar_docs = tm_model.get_docs_by_doc([doc.id], num_docs=3)
+                print(similar_docs)
+                similar_docs_ids.append(similar_docs)
 
                 # cluster_reduced = tm_model.get_documents_topics(self, doc.id, reduced=True)
                 # url.cluster_reduced = cluster_reduced
@@ -142,7 +171,7 @@ def save_url(input_df, idx=None, sensitive_domain_cats=None):
                     print(e)
                     continue    
 
-    return success_url_ids, failure_url_ids, duplicate_url_ids
+    return success_url_ids, failure_url_ids, duplicate_url_ids, similar_docs_ids
 
 
 @blueprint.route('/form', methods=['GET', 'POST'])
@@ -186,7 +215,7 @@ def add_url():
         sensitive_domain_cats=['ott', 'cloud']
 
         # scrap
-        success_url_ids, failure_url_ids, duplicate_url_ids = save_url(input_df, sensitive_domain_cats=sensitive_domain_cats)
+        success_url_ids, failure_url_ids, duplicate_url_ids, similar_docs_ids = save_url(input_df, sensitive_domain_cats=sensitive_domain_cats)
         success_doc_list = [Document.query.filter_by(url_id=url_id).one() 
                             for url_id in success_url_ids]
         success_url_list = [Url.query.filter_by(id=url_id).one()
@@ -194,6 +223,9 @@ def add_url():
         success_info_list = list(zip(success_doc_list, success_url_list))
         failure_url_list = [Url.query.filter_by(id=url_id).one() 
                             for url_id in failure_url_ids]
+        print(similar_docs_ids)
+        similar_docs_list = [Document.query.filter_by(id=int(doc_id)).one()
+                             for doc_id in similar_docs_ids[0]]
 
         # return redirect(url_for('forms_blueprint.form'))
         return render_template(
@@ -203,6 +235,7 @@ def add_url():
             success_info_list=success_info_list,
             failure_url_list=failure_url_list,
             duplicate_url_list=duplicate_url_ids,
+            similar_docs_list=similar_docs_list,
             )
 
     else:
@@ -245,7 +278,7 @@ def add_url_kakao():
         sensitive_domain_cats=['ott', 'cloud']
 
         # scrap
-        success_url_ids, failure_url_ids, duplicate_url_ids = save_url(input_df, sensitive_domain_cats=sensitive_domain_cats)
+        success_url_ids, failure_url_ids, duplicate_url_ids, similar_docs_ids = save_url(input_df, sensitive_domain_cats=sensitive_domain_cats)
         success_doc_list = [Document.query.filter_by(url_id=url_id).one() 
                             for url_id in success_url_ids]
         success_url_list = [Url.query.filter_by(id=url_id).one()
@@ -253,6 +286,9 @@ def add_url_kakao():
         success_info_list = list(zip(success_doc_list, success_url_list))
         failure_url_list = [Url.query.filter_by(id=url_id).one() 
                             for url_id in failure_url_ids]
+        similar_docs_list = [Document.query.filter_by(id=doc_id).one()
+                             for doc in similar_docs_ids
+                             for doc_id in doc]
 
         # return redirect(url_for('forms_blueprint.form'))
         return render_template(
@@ -262,6 +298,7 @@ def add_url_kakao():
             success_info_list=success_info_list,
             failure_url_list=failure_url_list,
             duplicate_url_list=duplicate_url_ids,
+            similar_docs_list=similar_docs_list,
             )
 
     else:

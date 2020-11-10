@@ -181,11 +181,11 @@
                   </tr>
                 </thead>
 
-                {% for doc in success_doc_list %}
                 <tbody>
+                  {% for doc in similar_docs_list %}
                   <tr>
                     <td>
-                      {{doc.title}}
+                      <a href=/docs/{{doc.id}}><U>{{doc.title}}</U></a>
                     </td>
                     <td>
                       <a href={{doc.url.url}}><U>링크</U></a>
@@ -200,8 +200,8 @@
                       {{doc.text_prep|content}}
                     </td>
                   </tr>
+                  {% endfor %}
                 </tbody>
-                {% endfor %}
 
               </table>
 
@@ -213,27 +213,27 @@
 
       <div class="clearfix"></div>
 
-      <div class="row">
+        <!-- <div class="row"> -->
 
-        <!-- bar charts group -->
-        <div class="col-md-6 col-sm-6 col-xs-12">
-          <div class="x_panel">
-            <div class="x_title">
-              <h2>저장 이력</h2>
-              <div class="clearfix"></div>
-            </div>
-            <div class="x_content2">
-              <div id="graphx" style="width:100%; min-height:500px;" >
-                <iframe
-                  style='position: absolute; background: transparent; width: 95%; height:100%;' src='/dash/app3'
-                  frameborder="0">
-                </iframe>
+          <!-- bar charts group -->
+          <!-- <div class="col-md-6 col-sm-6 col-xs-12">
+            <div class="x_panel">
+              <div class="x_title">
+                <h2>저장 이력</h2>
+                <div class="clearfix"></div>
+              </div>
+              <div class="x_content2">
+                <div id="graphx" style="width:100%; min-height:500px;" >
+                  <iframe
+                    style='position: absolute; background: transparent; width: 95%; height:100%;' src='/dash/app3'
+                    frameborder="0">
+                  </iframe>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-        <!-- /bar charts group -->
-      </div>
+          </div> -->
+          <!-- /bar charts group -->
+        <!-- </div> -->
 
     </div>
   </div>
