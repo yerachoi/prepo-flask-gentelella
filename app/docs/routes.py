@@ -73,9 +73,9 @@ def doc_detail(doc_id):
 
     # similar
     similar_docs = tm_model.get_docs_by_doc([doc_id], num_docs=3)
-    if similar_docs:
+    if len(similar_docs) != 0:
         similar_docs_list = [Document.query.filter_by(id=int(doc_id)).one()
-                            for doc_id in similar_docs]
+                             for doc_id in similar_docs]
     else:
         similar_docs_list = []
 
@@ -111,7 +111,7 @@ def topic_detail(topic_id):
         tm_model = TopicModel.load(tm_model_path)
         print("tm_model is loaded")
 
-    topic_words = tm_model.get_topics_info(is_reduced=False)[topic_id]['topic_words']
+    topic_words = tm_model.get_topic_info(topic_idx=topic_id, is_reduced=False)['topic_words']
 
     num_docs = 5
     # 토픽별 문서가 5개 미만일 경우를 고려

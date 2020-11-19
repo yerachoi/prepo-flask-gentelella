@@ -78,4 +78,4 @@ class Document(db.Model):
     crawl_date = Column(DateTime(), nullable=False)
     is_news = Column(Boolean())
     url_id = Column(Integer, ForeignKey('Url.id'))
-    url = relationship('Url', backref=backref('doc_set'))
+    url = relationship('Url', backref=backref('doc_set', uselist=False))
