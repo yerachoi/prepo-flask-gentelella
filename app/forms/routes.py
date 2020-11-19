@@ -25,15 +25,21 @@ from prepo.submodules.kakaotalk_msg_preprocessor import kakaotalk_msg_preprocess
 
 # from prepo.submodules.Top2Vec.top2vec import Top2Vec
 
-def edit_db_item(table, item_id, **kwargs):
+def edit_db_item(table, item_id, overwrite=False, **kwargs):
 
     item = db.session.query(table).filter_by(id=item_id).one()
 
     for attr, value in kwargs.items():
-        # 임시: 값이 없으면 수정
         print(getattr(item, attr))
-        if not getattr(item, attr):
+
+        # overwrite 하는 경우: 값 유무 관계 없이 수정
+        if overwrite:
             setattr(item, attr, value)
+        
+        # overwrite 하지 않는 경우: 값이 없을 때만 수정
+        else:
+            if not getattr(item, attr):
+                setattr(item, attr, value)
 
     db.session.add(item)
     db.session.commit()
@@ -124,13 +130,14 @@ def save_url(input_df, idx=None, sensitive_domain_cats=None):
                 tm_model.add_documents([row['contents_prep_sum']],
                                        doc_ids=[doc.id])
                 tm_model.save(tm_model_path)
-                cluster = tm_model.get_documents_topics([doc.id], reduced=False)
-                print(doc.id, cluster)
-                print(cluster[0][0])
+                cluster_info = tm_model.get_documents_topics([doc.id], reduced=False)
+                print(doc.id, cluster_info)
+                cluster = int(cluster_info[0][0])
+                print(cluster)
                 
                 user_id = current_user.get_id()
                 url = Url.query.filter_by(id=url.id).one()
-                url.cluster = int(cluster[0][0])
+                url.cluster = cluster
                 db.session.add(url)
                 db.session.commit()
 
@@ -224,8 +231,11 @@ def add_url():
         failure_url_list = [Url.query.filter_by(id=url_id).one() 
                             for url_id in failure_url_ids]
         print(similar_docs_ids)
-        similar_docs_list = [Document.query.filter_by(id=int(doc_id)).one()
-                             for doc_id in similar_docs_ids[0]]
+        if len(similar_docs_ids) != 0:
+            similar_docs_list = [Document.query.filter_by(id=int(doc_id)).one()
+                                for doc_id in similar_docs_ids[0]]
+        else:
+            similar_docs_list = []
 
         # return redirect(url_for('forms_blueprint.form'))
         return render_template(
@@ -391,4 +401,35 @@ def add_url_csv():
             update = {"text_sum": text_sum}
             edit_db_item(Document, i, **update)
         
+    return redirect(url_for('forms_blueprint.form'))
+
+
+@blueprint.route('/update_tm_model', methods=['GET', 'POST'])
+@login_required
+def update_tm_model():
+    if request.method == 'POST':
+        print("update_tm_model")
+        tm_model_path = '/mnt/d/yerachoi/plink-flask-gentelella/data/tm_model.z'
+
+        # 전체 문서 쿼리
+        queryset = Document.query # SQLAlchemy가 만들어준 쿼리, 하지만 .all()이 없어 실행되지는 않음
+        user_docs_df = pd.read_sql(queryset.statement, queryset.session.bind)
+
+        # 토픽 모델 재훈련
+        tm_model = TopicModel(user_docs_df['text_sum'], 
+                              doc_ids=user_docs_df['id'],
+                             )
+        tm_model.save(tm_model_path)
+        print("tm_model is saved")
+        
+        # 유저별 cluster 정보 업데이트
+        user_id = current_user.get_id()
+        for row in Url.query.filter(Url.user_id==user_id):
+            doc_id = row.doc_set.id
+            cluster_info = tm_model.get_documents_topics([doc_id], reduced=False)
+            cluster = int(cluster_info[0][0])
+            print(cluster)
+            update = {"cluster": cluster}
+            edit_db_item(Url, row.id, overwrite=True, **update)
+
     return redirect(url_for('forms_blueprint.form'))
